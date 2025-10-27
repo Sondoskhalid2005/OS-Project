@@ -13,6 +13,7 @@
 #include <kern/mem/memory_manager.h>
 #include <kern/mem/kheap.h>
 
+
 //2014 Test Free(): Set it to bypass the PAGE FAULT on an instruction with this length and continue executing the next one
 // 0 means don't bypass the PAGE FAULT
 uint8 bypassInstrLength = 0;
@@ -120,7 +121,7 @@ void fault_handler(struct Trapframe *tf)
 	if ((tf->tf_cs & 3) == 3) {
 		userTrap = 1;
 	}
-	if (!userTrap)
+	if (!userTrap) 
 	{
 		struct cpu* c = mycpu();
 		//cprintf("trap from KERNEL\n");
@@ -159,13 +160,29 @@ void fault_handler(struct Trapframe *tf)
 	}
 	else
 	{
-		if (userTrap)
+		if (userTrap) //fault is from userMode
 		{
 			/*============================================================================================*/
 			//TODO: [PROJECT'25.GM#3] FAULT HANDLER I - #2 Check for invalid pointers
 			//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
 			//your code is here
-
+             int Faulted_page_perm=pt_get_page_permissions(faulted_env->env_page_directory, fault_va);
+			 /*  requriments
+			 1st case:pointing to UNMARKED page in user heap
+			 2nd case:pointing to kernel
+			 3rd case:exist page ,put! read onlyyy   */
+			 if(!(Faulted_page_perm & PERM_MARKED)&&(Faulted_page_perm&PERM_UHPAGE)){
+				cprintf("1st case:pointing to UNMARKED page in user heap");
+				env_exit(); // end process
+			 }
+			 if(!(Faulted_page_perm&PERM_USER)){ // fault address pointing to kernel
+				cprintf("2nd case:pointing to kernel");
+				env_exit();
+			 } 
+			 if((Faulted_page_perm &PERM_PRESENT)&& !(Faulted_page_perm&PERM_WRITEABLE)){
+				cprintf("3rd case:exist page ,but! read onlyyy");
+				env_exit();
+			 }
 			/*============================================================================================*/
 		}
 
@@ -238,6 +255,7 @@ void table_fault_handler(struct Env * curenv, uint32 fault_va)
  */
 int get_optimal_num_faults(struct WS_List *initWorkingSet, int maxWSSize, struct PageRef_List *pageReferences)
 {
+	/* INDIVIDUAL*/
 	//TODO: [PROJECT'25.IM#1] FAULT HANDLER II - #2 get_optimal_num_faults
 	//Your code is here
 	//Comment the following line
@@ -258,12 +276,31 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		//TODO: [PROJECT'25.GM#3] FAULT HANDLER I - #3 placement
 		//Your code is here
 		//Comment the following line
+
+		/* requriments
+		1-allocate space for faulted page
+		2-read faulted page from page file to memo(map)
+		3-if page not found on page file,then
+		       a. stack or heap ,ok (دول بس المسموح اني ملاقيهمش على الديسك)
+			   b. else, reject then end el process
+        4-update working set list(add new element to list & update its last one) */
+		 /*1-*/
+		struct FrameInfo * faulted_page_ptr;
+		int faulted_page_frame =allocate_frame(&faulted_page_ptr);
+		if(faulted_page_frame== E_NO_MEM) panic("no storage to allocate this frame"); 
+		/*2-*/
+		uint32 mapped_address=map_frame(faulted_env->env_page_directory, 
+			faulted_page_ptr, fault_va, PERM_WRITEABLE | PERM_USER);
+
+        
+
 		panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
 	}
 	else
 	{
 		if (isPageReplacmentAlgorithmOPTIMAL())
 		{
+			/* INDIVIDUAL*/
 			//TODO: [PROJECT'25.IM#1] FAULT HANDLER II - #1 Optimal Reference Stream
 			//Your code is here
 			//Comment the following line
@@ -271,6 +308,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		}
 		else if (isPageReplacmentAlgorithmOPTIMAL())
 		{
+			/* INDIVIDUAL*/
 			//TODO: [PROJECT'25.IM#1] FAULT HANDLER II - #3 Clock Replacement
 			//Your code is here
 			//Comment the following line
@@ -278,6 +316,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		}
 		else if (isPageReplacmentAlgorithmLRU(PG_REP_LRU_TIME_APPROX))
 		{
+			/* INDIVIDUAL*/
 			//TODO: [PROJECT'25.IM#6] FAULT HANDLER II - #2 LRU Aging Replacement
 			//Your code is here
 			//Comment the following line
@@ -285,6 +324,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		}
 		else if (isPageReplacmentAlgorithmModifiedCLOCK())
 		{
+			/* INDIVIDUAL*/
 			//TODO: [PROJECT'25.IM#6] FAULT HANDLER II - #3 Modified Clock Replacement
 			//Your code is here
 			//Comment the following line
