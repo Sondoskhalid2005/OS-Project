@@ -87,6 +87,15 @@ struct uint64
 	(typeof(a)) (ROUNDDOWN((uint32) (a) + __n - 1, __n));	\
 })
 
+#define ROUNDUP_POWERTWO(a,x)                     \
+({                                                                                         \
+   for (uint32 i = 3; i <= 11; i++)                  \
+    {                                          \
+	 x = ROUNDUP(a, 1<<i);                \
+	if (x == (1<<i))                            \
+	break;                                       \
+    }                                             \
+})
 // Return the offset of 'member' relative to the beginning of a struct type
 #define offsetof(type, member)  ((size_t) (&((type*)0)->member))
 
